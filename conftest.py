@@ -6,7 +6,9 @@ import time
 
 import config
 from common.bindings.auth import auth
+from common.bindings.databases import postgres
 from common.bindings.kerberos import Kerberos
+from common.bindings.shrinker.shrinker_backend import filter_controller
 from common.bindings.vault import Vault
 from common.configs.vault_config import VaultCorp
 from common.utils.checks import is_gitlab_runner
@@ -133,6 +135,39 @@ def check_token():
         State.datariver_token_expires_in = datetime.datetime.now() + datetime.timedelta(seconds=600)
 
     yield
+
+
+@pytest.fixture(scope="function", autouse=True)
+def clear_test_data():
+
+    logger = logging.getLogger('clear_test_data')
+    logger.setLevel(logging.INFO)
+
+    yield
+
+    if State.domain_filters:
+
+        logger.info(f"Список фильтров на удаление: {State.domain_filters}")
+
+        for domain_filters_id in State.domain_filters:
+            response = filter_controller.delete_filter(
+                token=State.datariver_token,
+                id=domain_filters_id
+            )
+            logger.info(f"response for deleting: {response.json()}")
+
+            # Удаляем записи из таблицы campaigns
+            postgres.crud_query(
+                text_query=f"delete from app.filter_stream fs2 where fs2.filter_hash='{domain_filters_id}'",
+                host=State.shrinker_backend_db_host,
+                port=State.shrinker_backend_db_port,
+                database_name=State.shrinker_backend_db_name,
+                user=State.shrinker_backend_db_user,
+                password=State.shrinker_backend_db_password
+            )
+
+        logger.info(f"Список фильтров перед обнулением: {State.domain_filters}")
+        State.domain_filters = []
 
 
 # Хуки
