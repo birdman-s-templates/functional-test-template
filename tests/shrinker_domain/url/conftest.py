@@ -1,6 +1,4 @@
-from common.bindings.env import Env
 from common.utils.fixtures_and_hooks import load_tests, xfail_handler, tags_handler
-from common.utils.state import State
 
 
 def pytest_generate_tests(metafunc):
@@ -10,9 +8,6 @@ def pytest_generate_tests(metafunc):
     """
 
     path = "tests/shrinker_domain/url/test_data"
-
-    env = Env()
-    State.prep_user = env.get_env_data_by_name(name="PREP_USER")
 
     # Обработка тестовых данных
     for fixture in metafunc.fixturenames:
