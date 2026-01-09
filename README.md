@@ -48,29 +48,24 @@ Test данные разделены по сценариям в отдельны
 
 ### 2. __Параметризованное тестирование__
 
-Параметризация через хук pytest_generate_tests (достаточно указать в нем путь к директории с тестовыми данными для импорта под соответствующие тесты):
+Параметризация через хук pytest_generate_tests:
 ```javascript
 def pytest_generate_tests(metafunc):
     """
-    Хук pytest, который при инициализации фикстур, смотрит есть ли у теста фикстуры, начинающиеся с data_, если
-    находит - импортирует фикстуру, как пакет
+    Универсальный хук для обработки тестовых данных по всем доменам.
+    Автоматически определяет путь на основе расположения модуля теста.
     """
 
-    path = "tests/shrinker_domain/url/test_data"
+    # Определяем путь на основе директории текущего модуля
+    test_module_dir = os.path.dirname(os.path.abspath(metafunc.module.__file__))
+    domain_name = os.path.basename(test_module_dir)
+    path = f"tests/shrinker_domain/{domain_name}/test_data"
 
-    # Обработка тестовых данных
     for fixture in metafunc.fixturenames:
         if fixture.startswith('data_'):
-
-            # Передаем название параметра в функцию, которая парсит файл
             tests = load_tests(name_of_data_file=fixture, path=path)
-
-            # Обрабатываем xfails
             tests = xfail_handler(tests=tests)
-
-            # Обрабатываем tags и custom labels для Allure
             tests = tags_handler(tests=tests)
-
             metafunc.parametrize(fixture, tests)
 ```
 

@@ -1,6 +1,7 @@
 import allure
 import datetime
 import logging
+import os
 import pytest
 import time
 
@@ -12,6 +13,7 @@ from common.bindings.shrinker.shrinker_backend import filter_controller
 from common.bindings.vault import Vault
 from common.configs.vault_config import VaultCorp
 from common.utils.checks import is_gitlab_runner
+from common.utils.fixtures_and_hooks import load_tests, xfail_handler, tags_handler
 from common.utils.state import State
 from common.utils.tags import MARKER_SPECS
 
@@ -171,6 +173,24 @@ def clear_test_data():
 
 
 # Хуки
+def pytest_generate_tests(metafunc):
+    """
+    Универсальный хук для обработки тестовых данных во всех доменах.
+    Автоматически определяет путь на основе расположения модуля теста.
+    """
+
+    # Определяем путь на основе директории текущего модуля
+    test_module_dir = os.path.dirname(os.path.abspath(metafunc.module.__file__))
+    domain_name = os.path.basename(test_module_dir)
+    path = f"tests/shrinker_domain/{domain_name}/test_data"
+
+    for fixture in metafunc.fixturenames:
+        if fixture.startswith('data_'):
+            tests = load_tests(name_of_data_file=fixture, path=path)
+            tests = xfail_handler(tests=tests)
+            tests = tags_handler(tests=tests)
+            metafunc.parametrize(fixture, tests)
+
 def pytest_assertrepr_compare(op, left, right):
     """
     Хук pytest, который переопределяет вывод всех asserts
